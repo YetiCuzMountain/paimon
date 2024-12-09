@@ -51,6 +51,7 @@ import org.apache.paimon.types.RowType;
 import org.apache.paimon.utils.InternalRowPartitionComputer;
 import org.apache.paimon.utils.Pair;
 import org.apache.paimon.utils.Preconditions;
+import org.apache.paimon.utils.StringUtils;
 import org.apache.paimon.view.View;
 import org.apache.paimon.view.ViewImpl;
 
@@ -82,12 +83,14 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -1301,7 +1304,7 @@ public class HiveCatalog extends AbstractCatalog {
         }
 
         // create HiveConf from hadoop configuration with hadoop conf directory configured.
-        Configuration hadoopConf = defaultHadoopConf;
+        Configuration hadoopConf = null;
         if (!isNullOrWhitespaceOnly(hadoopConfDir)) {
             if (!addHadoopConfIfFound(hadoopConf, hadoopConfDir, new Options())) {
                 String possiableUsedConfFiles =
@@ -1313,8 +1316,29 @@ public class HiveCatalog extends AbstractCatalog {
                                         + possiableUsedConfFiles
                                         + ") exist in the folder."));
             }
+        }else {
+            for (String possibleHadoopConfPath :
+                    possibleHadoopConfPath()) {
+                hadoopConf = getHadoopConfiguration(possibleHadoopConfPath);
+                if (hadoopConf != null) {
+                    break;
+                }
+            }
         }
 
+        if (hadoopConf == null) {
+            hadoopConf = new Configuration();
+        }
+
+        // 将 hadoopConf 中的dfs.namenode.rpc-address.ns.nnX(X 为1 ~ n) 的配置设置到 defaultHadoopConf 中,解决因为 nnproxy 的地址不一致导致的认证问题
+        for (Map.Entry<String, String> entry : hadoopConf) {
+            if (entry.getKey().startsWith("dfs.namenode.rpc-address.ns.nn")) {
+                if (entry.getValue() != null) {
+                    LOG.info("Setting hive conf key {} as {}", entry.getKey(), entry.getValue());
+                    defaultHadoopConf.set(entry.getKey(), entry.getValue());
+                }
+            }
+        }
         LOG.info("Setting hive conf dir as {}", hiveConfDir);
         if (hiveConfDir != null) {
             // ignore all the static conf file URLs that HiveConf may have set
@@ -1339,6 +1363,9 @@ public class HiveCatalog extends AbstractCatalog {
 
             return hiveConf;
         } else {
+            HiveConf.setHiveSiteLocation(null);
+            HiveConf.setLoadMetastoreConfig(false);
+            HiveConf.setLoadHiveServer2Config(false);
             HiveConf hiveConf = new HiveConf(hadoopConf, HiveConf.class);
             // user doesn't provide hive conf dir, we try to find it in classpath
             URL hiveSite =
@@ -1409,5 +1436,62 @@ public class HiveCatalog extends AbstractCatalog {
 
     public static String possibleHiveConfPath() {
         return System.getenv("HIVE_CONF_DIR");
+    }
+
+    /**
+     * Returns a new Hadoop Configuration object using the path to the hadoop conf configured.
+     *
+     * @param hadoopConfDir Hadoop conf directory path.
+     * @return A Hadoop configuration instance.
+     */
+    public static Configuration getHadoopConfiguration(String hadoopConfDir) {
+        if (new File(hadoopConfDir).exists()) {
+            List<File> possiableConfFiles = new ArrayList<File>();
+            File coreSite = new File(hadoopConfDir, "core-site.xml");
+            if (coreSite.exists()) {
+                possiableConfFiles.add(coreSite);
+            }
+            File hdfsSite = new File(hadoopConfDir, "hdfs-site.xml");
+            if (hdfsSite.exists()) {
+                possiableConfFiles.add(hdfsSite);
+            }
+            File yarnSite = new File(hadoopConfDir, "yarn-site.xml");
+            if (yarnSite.exists()) {
+                possiableConfFiles.add(yarnSite);
+            }
+            // Add mapred-site.xml. We need to read configurations like compression codec.
+            File mapredSite = new File(hadoopConfDir, "mapred-site.xml");
+            if (mapredSite.exists()) {
+                possiableConfFiles.add(mapredSite);
+            }
+            if (possiableConfFiles.isEmpty()) {
+                return null;
+            } else {
+                Configuration hadoopConfiguration = new Configuration();
+                LOG.info("[getHadoopConfiguration] before " + hadoopConfiguration.get("dfs.namenode.rpc-address.ns.nn1"));
+                LOG.info("[getHadoopConfiguration] before " + hadoopConfiguration.get("dfs.namenode.rpc-address.ns.nn2"));
+                LOG.info("[getHadoopConfiguration] before " + hadoopConfiguration.get("dfs.namenode.rpc-address.ns.nn3"));
+                for (File confFile : possiableConfFiles) {
+                    if (confFile.getAbsolutePath().contains("hdfs-site.xml") && !StringUtils.isNullOrWhitespaceOnly(hadoopConfiguration.get("dfs.ha.namenodes.ns"))) {
+                        continue;
+                    }
+                    hadoopConfiguration.addResource(new org.apache.hadoop.fs.Path(confFile.getAbsolutePath()));
+                }
+                LOG.info("[getHadoopConfiguration]" + hadoopConfiguration.get("dfs.namenode.rpc-address.ns.nn1"));
+                LOG.info("[getHadoopConfiguration]" + hadoopConfiguration.get("dfs.namenode.rpc-address.ns.nn2"));
+                LOG.info("[getHadoopConfiguration]" + hadoopConfiguration.get("dfs.namenode.rpc-address.ns.nn3"));
+                return hadoopConfiguration;
+            }
+        }
+        return null;
+    }
+    public static String[] possibleHadoopConfPath() {
+        String[] possiblePaths = new String[3];
+        possiblePaths[0] = System.getenv("HADOOP_CONF_DIR");
+        if (System.getenv("HADOOP_HOME") != null) {
+            possiblePaths[1] = System.getenv("HADOOP_HOME") + "/conf";
+            possiblePaths[2] = System.getenv("HADOOP_HOME") + "/etc/hadoop"; // hadoop 2.2
+        }
+        return Arrays.stream(possiblePaths).filter(Objects::nonNull).toArray(String[]::new);
     }
 }
