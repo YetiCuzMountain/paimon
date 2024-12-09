@@ -35,6 +35,7 @@ import org.apache.paimon.table.FileStoreTable;
 import org.apache.flink.api.common.RuntimeExecutionMode;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.FlatMapFunction;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.connector.source.Source;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.ExecutionOptions;
@@ -166,7 +167,7 @@ public abstract class SynchronizationActionBase extends ActionBase {
         if (idleTimeout != null) {
             watermarkStrategy = watermarkStrategy.withIdleness(idleTimeout);
         }
-        return env.fromSource(source, watermarkStrategy, syncJobHandler.provideSourceName());
+        return env.fromSource(source, watermarkStrategy, syncJobHandler.provideSourceName(), TypeInformation.of(CdcSourceRecord.class));
     }
 
     protected abstract FlatMapFunction<CdcSourceRecord, RichCdcMultiplexRecord> recordParse();
