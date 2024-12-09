@@ -114,5 +114,4 @@ public abstract class FileFormat {
         }
         return new Options(result);
     }
-
 }

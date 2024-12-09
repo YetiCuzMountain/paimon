@@ -43,8 +43,8 @@ import org.apache.paimon.types.MapType;
 import org.apache.paimon.types.MultisetType;
 import org.apache.paimon.types.RowType;
 
-import org.apache.orc.OrcConf;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.orc.OrcConf;
 import org.apache.orc.TypeDescription;
 
 import javax.annotation.Nullable;

@@ -18,13 +18,13 @@
 
 package org.apache.paimon.format.orc;
 
-import org.apache.orc.OrcConf;
 import org.apache.paimon.format.FileFormat;
 import org.apache.paimon.format.FileFormatFactory;
 import org.apache.paimon.options.MemorySize;
 import org.apache.paimon.options.Options;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.orc.OrcConf;
 
 import java.util.Objects;
 import java.util.Properties;
@@ -50,7 +50,7 @@ public class OrcFileFormatFactory implements FileFormatFactory {
             getOrcProperties(supplyDefaultOptions(formatContext.options()), formatContext)
                     .forEach((k, v) -> orcConf.set(k.toString(), v.toString()));
         }
-        return new OrcFileFormat(formatContext,orcConf);
+        return new OrcFileFormat(formatContext, orcConf);
     }
 
     private Options supplyDefaultOptions(Options options) {
@@ -67,7 +67,7 @@ public class OrcFileFormatFactory implements FileFormatFactory {
 
     private Properties getOrcProperties(Options options, FormatContext formatContext) {
         Properties orcProperties = new Properties();
-        orcProperties.putAll(FileFormat.getIdentifierPrefixOptions(options,"orc").toMap());
+        orcProperties.putAll(FileFormat.getIdentifierPrefixOptions(options, "orc").toMap());
 
         if (!orcProperties.containsKey(OrcConf.COMPRESSION_ZSTD_LEVEL.getAttribute())) {
             orcProperties.setProperty(

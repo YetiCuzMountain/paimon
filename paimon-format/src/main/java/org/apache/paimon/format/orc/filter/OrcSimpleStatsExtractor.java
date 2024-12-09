@@ -59,7 +59,8 @@ public class OrcSimpleStatsExtractor implements SimpleStatsExtractor {
     private Configuration configuration;
 
     public OrcSimpleStatsExtractor(
-            RowType rowType, SimpleColStatsCollector.Factory[] statsCollectors,
+            RowType rowType,
+            SimpleColStatsCollector.Factory[] statsCollectors,
             Configuration configuration) {
         this.rowType = rowType;
         this.statsCollectors = statsCollectors;
@@ -77,8 +78,7 @@ public class OrcSimpleStatsExtractor implements SimpleStatsExtractor {
     @Override
     public Pair<SimpleColStats[], FileInfo> extractWithFileInfo(FileIO fileIO, Path path)
             throws IOException {
-        try (Reader reader =
-                OrcReaderFactory.createReader(configuration, fileIO, path, null)) {
+        try (Reader reader = OrcReaderFactory.createReader(configuration, fileIO, path, null)) {
             long rowCount = reader.getNumberOfRows();
             ColumnStatistics[] columnStatistics = reader.getStatistics();
             TypeDescription schema = reader.getSchema();

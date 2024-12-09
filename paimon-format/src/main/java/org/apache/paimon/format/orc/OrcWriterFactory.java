@@ -126,7 +126,9 @@ public class OrcWriterFactory implements FormatWriterFactory {
     @VisibleForTesting
     protected OrcFile.WriterOptions getWriterOptions() {
         if (null == writerOptions) {
-            writerOptions = OrcFile.writerOptions(writerProperties, new ThreadLocalClassLoaderConfiguration(this.conf));
+            writerOptions =
+                    OrcFile.writerOptions(
+                            writerProperties, new ThreadLocalClassLoaderConfiguration(this.conf));
             writerOptions.setSchema(this.vectorizer.getSchema());
         }
 

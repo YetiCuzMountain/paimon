@@ -1085,7 +1085,7 @@ public class HiveCatalog extends AbstractCatalog {
             UserGroupInformation currentUGI = UserGroupInformation.getCurrentUser();
             user = currentUGI.getShortUserName();
         } catch (IOException e) {
-            LOG.error("Failed to getCurrent kerberos user: ",e);
+            LOG.error("Failed to getCurrent kerberos user: ", e);
         }
         Table table =
                 new Table(
@@ -1324,9 +1324,8 @@ public class HiveCatalog extends AbstractCatalog {
                                         + possiableUsedConfFiles
                                         + ") exist in the folder."));
             }
-        }else {
-            for (String possibleHadoopConfPath :
-                    possibleHadoopConfPath()) {
+        } else {
+            for (String possibleHadoopConfPath : possibleHadoopConfPath()) {
                 hadoopConf = getHadoopConfiguration(possibleHadoopConfPath);
                 if (hadoopConf != null) {
                     break;
@@ -1338,7 +1337,8 @@ public class HiveCatalog extends AbstractCatalog {
             hadoopConf = new Configuration();
         }
 
-        // 将 hadoopConf 中的dfs.namenode.rpc-address.ns.nnX(X 为1 ~ n) 的配置设置到 defaultHadoopConf 中,解决因为 nnproxy 的地址不一致导致的认证问题
+        // 将 hadoopConf 中的dfs.namenode.rpc-address.ns.nnX(X 为1 ~ n) 的配置设置到 defaultHadoopConf 中,解决因为
+        // nnproxy 的地址不一致导致的认证问题
         for (Map.Entry<String, String> entry : hadoopConf) {
             if (entry.getKey().startsWith("dfs.namenode.rpc-address.ns.nn")) {
                 if (entry.getValue() != null) {
@@ -1476,23 +1476,39 @@ public class HiveCatalog extends AbstractCatalog {
                 return null;
             } else {
                 Configuration hadoopConfiguration = new Configuration();
-                LOG.info("[getHadoopConfiguration] before " + hadoopConfiguration.get("dfs.namenode.rpc-address.ns.nn1"));
-                LOG.info("[getHadoopConfiguration] before " + hadoopConfiguration.get("dfs.namenode.rpc-address.ns.nn2"));
-                LOG.info("[getHadoopConfiguration] before " + hadoopConfiguration.get("dfs.namenode.rpc-address.ns.nn3"));
+                LOG.info(
+                        "[getHadoopConfiguration] before "
+                                + hadoopConfiguration.get("dfs.namenode.rpc-address.ns.nn1"));
+                LOG.info(
+                        "[getHadoopConfiguration] before "
+                                + hadoopConfiguration.get("dfs.namenode.rpc-address.ns.nn2"));
+                LOG.info(
+                        "[getHadoopConfiguration] before "
+                                + hadoopConfiguration.get("dfs.namenode.rpc-address.ns.nn3"));
                 for (File confFile : possiableConfFiles) {
-                    if (confFile.getAbsolutePath().contains("hdfs-site.xml") && !StringUtils.isNullOrWhitespaceOnly(hadoopConfiguration.get("dfs.ha.namenodes.ns"))) {
+                    if (confFile.getAbsolutePath().contains("hdfs-site.xml")
+                            && !StringUtils.isNullOrWhitespaceOnly(
+                                    hadoopConfiguration.get("dfs.ha.namenodes.ns"))) {
                         continue;
                     }
-                    hadoopConfiguration.addResource(new org.apache.hadoop.fs.Path(confFile.getAbsolutePath()));
+                    hadoopConfiguration.addResource(
+                            new org.apache.hadoop.fs.Path(confFile.getAbsolutePath()));
                 }
-                LOG.info("[getHadoopConfiguration]" + hadoopConfiguration.get("dfs.namenode.rpc-address.ns.nn1"));
-                LOG.info("[getHadoopConfiguration]" + hadoopConfiguration.get("dfs.namenode.rpc-address.ns.nn2"));
-                LOG.info("[getHadoopConfiguration]" + hadoopConfiguration.get("dfs.namenode.rpc-address.ns.nn3"));
+                LOG.info(
+                        "[getHadoopConfiguration]"
+                                + hadoopConfiguration.get("dfs.namenode.rpc-address.ns.nn1"));
+                LOG.info(
+                        "[getHadoopConfiguration]"
+                                + hadoopConfiguration.get("dfs.namenode.rpc-address.ns.nn2"));
+                LOG.info(
+                        "[getHadoopConfiguration]"
+                                + hadoopConfiguration.get("dfs.namenode.rpc-address.ns.nn3"));
                 return hadoopConfiguration;
             }
         }
         return null;
     }
+
     public static String[] possibleHadoopConfPath() {
         String[] possiblePaths = new String[3];
         possiblePaths[0] = System.getenv("HADOOP_CONF_DIR");
