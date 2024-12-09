@@ -103,4 +103,16 @@ public abstract class FileFormat {
         }
         return new Options(result);
     }
+
+    public static Options getIdentifierPrefixOptions(Options options, String formatIdentifier) {
+        Map<String, String> result = new HashMap<>();
+        String prefix = formatIdentifier.toLowerCase() + ".";
+        for (String key : options.keySet()) {
+            if (key.toLowerCase().startsWith(prefix)) {
+                result.put(prefix + key.substring(prefix.length()), options.get(key));
+            }
+        }
+        return new Options(result);
+    }
+
 }

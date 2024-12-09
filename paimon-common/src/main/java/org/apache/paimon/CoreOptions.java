@@ -1522,6 +1522,12 @@ public class CoreOptions implements Serializable {
                     .noDefaultValue()
                     .withDescription("The serialized refresh handler of materialized table.");
 
+    public static final ConfigOption<Boolean> HADOOP_CONF_REUSE_ENABLED =
+            key("hadoop-conf.reuse.enabled")
+                    .booleanType()
+                    .defaultValue(false)
+                    .withDescription("Whether to enable hadoop conf reuse.");
+
     private final Options options;
 
     public CoreOptions(Map<String, String> options) {

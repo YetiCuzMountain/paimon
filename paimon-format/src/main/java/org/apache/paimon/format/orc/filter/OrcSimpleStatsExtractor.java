@@ -56,11 +56,14 @@ public class OrcSimpleStatsExtractor implements SimpleStatsExtractor {
 
     private final RowType rowType;
     private final SimpleColStatsCollector.Factory[] statsCollectors;
+    private Configuration configuration;
 
     public OrcSimpleStatsExtractor(
-            RowType rowType, SimpleColStatsCollector.Factory[] statsCollectors) {
+            RowType rowType, SimpleColStatsCollector.Factory[] statsCollectors,
+            Configuration configuration) {
         this.rowType = rowType;
         this.statsCollectors = statsCollectors;
+        this.configuration = configuration;
         Preconditions.checkArgument(
                 rowType.getFieldCount() == statsCollectors.length,
                 "The stats collector is not aligned to write schema.");
@@ -75,7 +78,7 @@ public class OrcSimpleStatsExtractor implements SimpleStatsExtractor {
     public Pair<SimpleColStats[], FileInfo> extractWithFileInfo(FileIO fileIO, Path path)
             throws IOException {
         try (Reader reader =
-                OrcReaderFactory.createReader(new Configuration(), fileIO, path, null)) {
+                OrcReaderFactory.createReader(configuration, fileIO, path, null)) {
             long rowCount = reader.getNumberOfRows();
             ColumnStatistics[] columnStatistics = reader.getStatistics();
             TypeDescription schema = reader.getSchema();

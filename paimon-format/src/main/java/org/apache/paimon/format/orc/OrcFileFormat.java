@@ -44,6 +44,7 @@ import org.apache.paimon.types.MultisetType;
 import org.apache.paimon.types.RowType;
 
 import org.apache.orc.OrcConf;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.orc.TypeDescription;
 
 import javax.annotation.Nullable;
@@ -51,6 +52,7 @@ import javax.annotation.concurrent.ThreadSafe;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.stream.Collectors;
@@ -70,17 +72,30 @@ public class OrcFileFormat extends FileFormat {
     private final int readBatchSize;
     private final int writeBatchSize;
     private final boolean deletionVectorsEnabled;
+    private final org.apache.hadoop.conf.Configuration extractorConf;
 
     public OrcFileFormat(FormatContext formatContext) {
+        this(formatContext, null);
+    }
+
+    public OrcFileFormat(FormatContext formatContext, Configuration orcConf) {
         super(IDENTIFIER);
-        this.orcProperties = getOrcProperties(formatContext.options(), formatContext);
-        this.readerConf = new org.apache.hadoop.conf.Configuration(false);
-        this.orcProperties.forEach((k, v) -> readerConf.set(k.toString(), v.toString()));
-        this.writerConf = new org.apache.hadoop.conf.Configuration(false);
-        this.orcProperties.forEach((k, v) -> writerConf.set(k.toString(), v.toString()));
         this.readBatchSize = formatContext.readBatchSize();
         this.writeBatchSize = formatContext.writeBatchSize();
         this.deletionVectorsEnabled = formatContext.options().get(DELETION_VECTORS_ENABLED);
+        this.orcProperties = getOrcProperties(formatContext.options(), formatContext);
+        if (Objects.isNull(orcConf)) {
+            this.readerConf = new org.apache.hadoop.conf.Configuration();
+            this.orcProperties.forEach((k, v) -> readerConf.set(k.toString(), v.toString()));
+            this.writerConf = new org.apache.hadoop.conf.Configuration();
+            this.orcProperties.forEach((k, v) -> writerConf.set(k.toString(), v.toString()));
+            this.extractorConf = new org.apache.hadoop.conf.Configuration();
+            this.orcProperties.forEach((k, v) -> extractorConf.set(k.toString(), v.toString()));
+        } else {
+            this.readerConf = new org.apache.hadoop.conf.Configuration(orcConf);
+            this.writerConf = new org.apache.hadoop.conf.Configuration(orcConf);
+            this.extractorConf = new org.apache.hadoop.conf.Configuration(orcConf);
+        }
     }
 
     @VisibleForTesting
@@ -96,7 +111,7 @@ public class OrcFileFormat extends FileFormat {
     @Override
     public Optional<SimpleStatsExtractor> createStatsExtractor(
             RowType type, SimpleColStatsCollector.Factory[] statsCollectors) {
-        return Optional.of(new OrcSimpleStatsExtractor(type, statsCollectors));
+        return Optional.of(new OrcSimpleStatsExtractor(type, statsCollectors, extractorConf));
     }
 
     @Override
@@ -146,7 +161,7 @@ public class OrcFileFormat extends FileFormat {
         return new OrcWriterFactory(vectorizer, orcProperties, writerConf, writeBatchSize);
     }
 
-    private Properties getOrcProperties(Options options, FormatContext formatContext) {
+    protected Properties getOrcProperties(Options options, FormatContext formatContext) {
         Properties orcProperties = new Properties();
         orcProperties.putAll(getIdentifierPrefixOptions(options).toMap());
 

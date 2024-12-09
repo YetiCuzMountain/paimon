@@ -58,6 +58,8 @@ public class OrcWriterFactory implements FormatWriterFactory {
     private OrcFile.WriterOptions writerOptions;
     private final int writeBatchSize;
 
+    private Configuration conf;
+
     /**
      * Creates a new OrcBulkWriterFactory using the provided Vectorizer implementation.
      *
@@ -91,6 +93,7 @@ public class OrcWriterFactory implements FormatWriterFactory {
             confMap.put(entry.getKey(), entry.getValue());
         }
         this.writeBatchSize = writeBatchSize;
+        conf = configuration;
     }
 
     @Override
@@ -123,12 +126,7 @@ public class OrcWriterFactory implements FormatWriterFactory {
     @VisibleForTesting
     protected OrcFile.WriterOptions getWriterOptions() {
         if (null == writerOptions) {
-            Configuration conf = new ThreadLocalClassLoaderConfiguration();
-            for (Map.Entry<String, String> entry : confMap.entrySet()) {
-                conf.set(entry.getKey(), entry.getValue());
-            }
-
-            writerOptions = OrcFile.writerOptions(writerProperties, conf);
+            writerOptions = OrcFile.writerOptions(writerProperties, new ThreadLocalClassLoaderConfiguration(this.conf));
             writerOptions.setSchema(this.vectorizer.getSchema());
         }
 
