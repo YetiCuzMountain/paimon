@@ -70,6 +70,7 @@ import org.apache.hadoop.hive.metastore.api.SerDeInfo;
 import org.apache.hadoop.hive.metastore.api.StorageDescriptor;
 import org.apache.hadoop.hive.metastore.api.Table;
 import org.apache.hadoop.hive.metastore.api.hive_metastoreConstants;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1079,12 +1080,19 @@ public class HiveCatalog extends AbstractCatalog {
             @Nullable FormatTable.Format provider,
             boolean externalTable) {
         long currentTimeMillis = System.currentTimeMillis();
+        String user = System.getProperty("user.name");
+        try {
+            UserGroupInformation currentUGI = UserGroupInformation.getCurrentUser();
+            user = currentUGI.getShortUserName();
+        } catch (IOException e) {
+            LOG.error("Failed to getCurrent kerberos user: ",e);
+        }
         Table table =
                 new Table(
                         identifier.getTableName(),
                         identifier.getDatabaseName(),
                         // current linux user
-                        System.getProperty("user.name"),
+                        user,
                         (int) (currentTimeMillis / 1000),
                         (int) (currentTimeMillis / 1000),
                         Integer.MAX_VALUE,
