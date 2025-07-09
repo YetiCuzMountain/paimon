@@ -473,16 +473,20 @@ public class HiveCatalog extends AbstractCatalog {
 
     @Override
     public TableSchema getDataTableSchema(Identifier identifier) throws TableNotExistException {
+        // all kinds of tables not exist
         Table table = getHmsTable(identifier);
+        // just paimon with certain name does not exist!
         return getDataTableSchema(identifier, table);
     }
 
     private TableSchema getDataTableSchema(Identifier identifier, Table table)
             throws TableNotExistException {
         if (!isPaimonTable(table)) {
-            throw new TableNotExistException(identifier);
+            // runtime Exception can throw out without function throws
+            // avoid changing AbstractCatalog.getDataTableMeta
+            throw new TableExistButNotPaimonException(identifier);
         }
-
+        // is paimon table, but paimon branch not exist, equals paimon table not exist
         return tableSchemaInFileSystem(
                         getTableLocation(identifier, table), identifier.getBranchNameOrDefault())
                 .orElseThrow(() -> new TableNotExistException(identifier));
@@ -759,6 +763,13 @@ public class HiveCatalog extends AbstractCatalog {
                                     createHiveTable(
                                             identifier, tableSchema, location, externalTable)));
         } catch (Exception e) {
+            try {
+                if (!externalTable) {
+                    fileIO.deleteDirectoryQuietly(location);
+                }
+            } catch (Exception ee) {
+                LOG.error("Delete directory[{}] fail for table {}", location, identifier, ee);
+            }
             throw new RuntimeException("Failed to create table " + identifier.getFullName(), e);
         }
     }
